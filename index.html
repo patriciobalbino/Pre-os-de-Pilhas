@@ -125,11 +125,15 @@
       </div>
     </div>
 
-    <!-- Formulário para Salvar/Editar Referência -->
+    <!-- Formulário para Salvar Nova Referência -->
     <div style="margin-top: 30px;">
-      <h3>Salvar ou Atualizar Referência</h3>
-      <button onclick="salvarReferencia()">Salvar Referência</button>
-      <button onclick="limparFormulario()">Limpar Formulário</button>
+      <h3>Adicionar Nova Referência</h3>
+      <div class="form-group">
+        <label>Referência (ex: 364)</label>
+        <input type="text" id="nova-referencia" placeholder="Digite a referência" />
+      </div>
+      <button onclick="salvarReferencia()">➕ Salvar no Banco de Dados</button>
+      <button onclick="limparFormulario()">🧹 Limpar Formulário</button>
     </div>
 
     <!-- Tabela de Referências Cadastradas -->
@@ -148,13 +152,16 @@
     </table>
   </div>
 
-  <!-- Supabase JS -->
+  <!-- SUPABASE: carregar a biblioteca ANTES de usar -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // 🔐 Substitua com suas chaves do Supabase
-    const supabaseUrl = 'https://cjzzbelznnnohtdppozf.supabase.co'; // ex: https://abc123.supabase.co
-    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqenpiZWx6bm5ub2h0ZHBwb3pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MzI3NTQsImV4cCI6MjA2OTIwODc1NH0.bzpcl1xdBy47v1qPuoYSYVlBax_I06OoxjhNwDFnWxs'; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-    const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+    // 🔐 Suas chaves do Supabase
+    const supabaseUrl = 'https://cjzzbelznnnohtdppozf.supabase.co';
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqenpiZWx6bm5ub2h0ZHBwb3pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MzI3NTQsImV4cCI6MjA2OTIwODc1NH0.bzpcl1xdBy47v1qPuoYSYVlBax_I06OoxjhNwDFnWxs';
+
+    // ✅ Criação correta do cliente Supabase
+    const { createClient } = supabase;
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
     // Carregar referências do banco ao abrir
     async function carregarReferencias() {
@@ -165,6 +172,7 @@
 
       if (error) {
         console.error('Erro ao carregar:', error);
+        alert("Erro ao carregar dados. Veja o console (F12).");
         return;
       }
 
@@ -174,7 +182,6 @@
       tbody.innerHTML = '';
 
       data.forEach(item => {
-        // Preenche o select
         const option = document.createElement('option');
         option.value = item.id;
         option.textContent = `${item.referencia} (${item.marca})`;
@@ -182,7 +189,6 @@
         option.dataset.valor = item.valor_dolar;
         select.appendChild(option);
 
-        // Preenche a tabela
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${item.referencia}</td>
@@ -222,30 +228,28 @@
       document.getElementById('resultado').style.display = 'block';
     }
 
-    // Salvar ou atualizar referência
+    // Salvar nova referência (sem prompt!)
     async function salvarReferencia() {
-      const referencia = prompt("Digite a referência (ex: 364):");
+      const referencia = document.getElementById('nova-referencia').value.trim();
       const marca = document.getElementById('marca').value.trim();
       const valorDolar = parseFloat(document.getElementById('valor-dolar').value);
 
       if (!referencia || !marca || isNaN(valorDolar)) {
-        alert("Preencha todos os campos corretamente.");
+        alert("Preencha todos os campos: referência, marca e valor em dólar.");
         return;
       }
 
       const { error } = await supabase
         .from('pilhas')
-        .upsert([
-          { referencia, marca, valor_dolar: valorDolar }
-        ], { onConflict: 'referencia' });
+        .upsert([{ referencia, marca, valor_dolar: valorDolar }], { onConflict: 'referencia' });
 
       if (error) {
-        alert("Erro ao salvar.");
+        alert("Erro ao salvar no banco.");
         console.error(error);
       } else {
-        alert("Salvo com sucesso!");
-        limparFormulario();
-        carregarReferencias(); // Atualiza lista
+        alert("✅ Salvo com sucesso!");
+        document.getElementById('nova-referencia').value = '';
+        carregarReferencias(); // Atualiza a lista
       }
     }
 
@@ -264,13 +268,14 @@
 
       document.getElementById('marca').value = data.marca;
       document.getElementById('valor-dolar').value = data.valor_dolar;
-      document.getElementById('select-referencia').value = id;
+      document.getElementById('nova-referencia').value = data.referencia;
     }
 
     // Limpar formulário
     function limparFormulario() {
       document.getElementById('marca').value = '';
       document.getElementById('valor-dolar').value = '';
+      document.getElementById('nova-referencia').value = '';
       document.getElementById('select-referencia').value = '';
     }
 
