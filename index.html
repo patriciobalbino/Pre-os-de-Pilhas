@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Preços de Pilhas</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background-color: #f7f9fc;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e8f5e9;
+      border: 2px solid #2ecc71;
+      border-radius: 8px;
+      font-size: 1.2em;
+      text-align: center;
+      display: none;
+    }
+    table {
+      width: 100%;
+      margin-top: 30px;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #34495e;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    .actions {
+      color: #e74c3c;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Preços de Pilhas</h1>
+
+    <!-- Formulário de Cálculo -->
+    <div>
+      <h3>Calcular Preço Final</h3>
+      <div class="form-group">
+        <label>Referência</label>
+        <select id="select-referencia" onchange="carregarDaSelecao()">
+          <option value="">-- Selecione uma referência --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Marca</label>
+        <input type="text" id="marca" placeholder="Ex: Murata" />
+      </div>
+      <div class="form-group">
+        <label>Valor em Dólar ($)</label>
+        <input type="number" id="valor-dolar" placeholder="0.25" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Valor do Dólar Hoje (R$)</label>
+        <input type="number" id="dolar-hoje" placeholder="6.00" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Margem de Lucro</label>
+        <select id="margem">
+          <option value="0.20">Atacado (20%)</option>
+          <option value="0.15">Especial (15%)</option>
+        </select>
+      </div>
+      <button onclick="calcular()">Calcular Preço Final</button>
+
+      <div class="result" id="resultado">
+        Preço final: <strong>R$ <span id="valor-final">0,00</span></strong>
+      </div>
+    </div>
+
+    <!-- Formulário para Salvar/Editar Referência -->
+    <div style="margin-top: 30px;">
+      <h3>Salvar ou Atualizar Referência</h3>
+      <button onclick="salvarReferencia()">Salvar Referência</button>
+      <button onclick="limparFormulario()">Limpar Formulário</button>
+    </div>
+
+    <!-- Tabela de Referências Cadastradas -->
+    <table id="tabela-referencias">
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Marca</th>
+          <th>Valor ($)</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Dados carregados aqui -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // 🔐 Substitua com suas chaves do Supabase
+    const supabaseUrl = 'https://cjzzbelznnnohtdppozf.supabase.co'; // ex: https://abc123.supabase.co
+    const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqenpiZWx6bm5ub2h0ZHBwb3pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2MzI3NTQsImV4cCI6MjA2OTIwODc1NH0.bzpcl1xdBy47v1qPuoYSYVlBax_I06OoxjhNwDFnWxs'; // ex: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    const supabase = supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+    // Carregar referências do banco ao abrir
+    async function carregarReferencias() {
+      const { data, error } = await supabase
+        .from('pilhas')
+        .select('id, referencia, marca, valor_dolar')
+        .order('referencia');
+
+      if (error) {
+        console.error('Erro ao carregar:', error);
+        return;
+      }
+
+      const select = document.getElementById('select-referencia');
+      const tbody = document.querySelector('#tabela-referencias tbody');
+      select.innerHTML = '<option value="">-- Selecione uma referência --</option>';
+      tbody.innerHTML = '';
+
+      data.forEach(item => {
+        // Preenche o select
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.referencia} (${item.marca})`;
+        option.dataset.marca = item.marca;
+        option.dataset.valor = item.valor_dolar;
+        select.appendChild(option);
+
+        // Preenche a tabela
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.referencia}</td>
+          <td>${item.marca}</td>
+          <td>$${item.valor_dolar.toFixed(2)}</td>
+          <td class="actions" onclick="editar(${item.id})">✏️ Editar</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Carregar dados no formulário ao selecionar
+    function carregarDaSelecao() {
+      const select = document.getElementById('select-referencia');
+      const selected = select.options[select.selectedIndex];
+      if (!selected) return;
+
+      document.getElementById('marca').value = selected.dataset.marca;
+      document.getElementById('valor-dolar').value = selected.dataset.valor;
+    }
+
+    // Calcular preço final
+    function calcular() {
+      const valorDolar = parseFloat(document.getElementById('valor-dolar').value);
+      const dolarHoje = parseFloat(document.getElementById('dolar-hoje').value);
+      const margem = parseFloat(document.getElementById('margem').value);
+
+      if (!valorDolar || !dolarHoje) {
+        alert("Preencha o valor em dólar e o valor do dólar de hoje.");
+        return;
+      }
+
+      const precoReal = valorDolar * dolarHoje;
+      const precoFinal = precoReal * (1 + margem);
+
+      document.getElementById('valor-final').textContent = precoFinal.toFixed(2).replace('.', ',');
+      document.getElementById('resultado').style.display = 'block';
+    }
+
+    // Salvar ou atualizar referência
+    async function salvarReferencia() {
+      const referencia = prompt("Digite a referência (ex: 364):");
+      const marca = document.getElementById('marca').value.trim();
+      const valorDolar = parseFloat(document.getElementById('valor-dolar').value);
+
+      if (!referencia || !marca || isNaN(valorDolar)) {
+        alert("Preencha todos os campos corretamente.");
+        return;
+      }
+
+      const { error } = await supabase
+        .from('pilhas')
+        .upsert([
+          { referencia, marca, valor_dolar: valorDolar }
+        ], { onConflict: 'referencia' });
+
+      if (error) {
+        alert("Erro ao salvar.");
+        console.error(error);
+      } else {
+        alert("Salvo com sucesso!");
+        limparFormulario();
+        carregarReferencias(); // Atualiza lista
+      }
+    }
+
+    // Editar referência
+    async function editar(id) {
+      const { data, error } = await supabase
+        .from('pilhas')
+        .select('referencia, marca, valor_dolar')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        alert("Erro ao carregar dados.");
+        return;
+      }
+
+      document.getElementById('marca').value = data.marca;
+      document.getElementById('valor-dolar').value = data.valor_dolar;
+      document.getElementById('select-referencia').value = id;
+    }
+
+    // Limpar formulário
+    function limparFormulario() {
+      document.getElementById('marca').value = '';
+      document.getElementById('valor-dolar').value = '';
+      document.getElementById('select-referencia').value = '';
+    }
+
+    // Carregar referências ao abrir
+    carregarReferencias();
+  </script>
+</body>
+</html>
