@@ -152,7 +152,7 @@
     </table>
   </div>
 
-  <!-- SUPABASE: carregar a biblioteca ANTES de usar -->
+  <!-- Carrega a biblioteca do Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     // 🔐 Suas chaves do Supabase
@@ -172,7 +172,7 @@
 
       if (error) {
         console.error('Erro ao carregar:', error);
-        alert("Erro ao carregar dados. Veja o console (F12).");
+        alert("Erro ao carregar referências. Veja o console (F12).");
         return;
       }
 
@@ -247,7 +247,7 @@
         alert("Erro ao salvar no banco.");
         console.error(error);
       } else {
-        alert("✅ Salvo com sucesso!");
+        alert("✅ Salvo com sucesso no banco de dados!");
         document.getElementById('nova-referencia').value = '';
         carregarReferencias(); // Atualiza a lista
       }
